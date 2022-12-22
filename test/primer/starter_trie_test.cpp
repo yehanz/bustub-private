@@ -41,7 +41,7 @@ std::vector<std::string> GenerateNRandomString(int n) {
   return rand_strs;
 }
 
-TEST(StarterTest, DISABLED_TrieNodeInsertTest) {
+TEST(StarterTest, TrieNodeInsertTest) {
   // Test Insert
   //  When same key is inserted twice, insert should return nullptr
   // When inserted key and unique_ptr's key does not match, return nullptr
@@ -60,7 +60,7 @@ TEST(StarterTest, DISABLED_TrieNodeInsertTest) {
   EXPECT_EQ((*child_node)->GetKeyChar(), 'c');
 }
 
-TEST(StarterTest, DISABLED_TrieNodeRemoveTest) {
+TEST(StarterTest, TrieNodeRemoveTest) {
   auto t = TrieNode('a');
   __attribute__((unused)) auto child_node = t.InsertChildNode('b', std::make_unique<TrieNode>('b'));
   child_node = t.InsertChildNode('c', std::make_unique<TrieNode>('c'));
@@ -78,7 +78,7 @@ TEST(StarterTest, DISABLED_TrieNodeRemoveTest) {
   EXPECT_EQ(child_node, nullptr);
 }
 
-TEST(StarterTest, DISABLED_TrieInsertTest) {
+TEST(StarterTest, TrieInsertTest) {
   {
     Trie trie;
     trie.Insert<std::string>("abc", "d");
@@ -129,12 +129,14 @@ TEST(StarterTest, DISABLED_TrieInsertTest) {
   }
 }
 
-TEST(StarterTrieTest, DISABLED_RemoveTest) {
+TEST(StarterTrieTest, RemoveTest) {
   {
     Trie trie;
     bool success = trie.Insert<int>("a", 5);
     EXPECT_EQ(success, true);
     success = trie.Insert<int>("aa", 6);
+    EXPECT_EQ(success, true);
+    success = trie.Insert<int>("ab", 0);
     EXPECT_EQ(success, true);
     success = trie.Insert<int>("aaa", 7);
     EXPECT_EQ(success, true);
@@ -159,6 +161,10 @@ TEST(StarterTrieTest, DISABLED_RemoveTest) {
     EXPECT_EQ(success, true);
     success = trie.Remove("aaa");
     EXPECT_EQ(success, true);
+
+    success = false;
+    EXPECT_EQ(trie.GetValue<int>("ab", &success), 0);
+    EXPECT_TRUE(success);
   }
 }
 
