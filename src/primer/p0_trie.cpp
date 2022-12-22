@@ -153,37 +153,31 @@ bool Trie::RemoveHelper(
   std::unique_ptr<TrieNode> *node = (*prev)->GetChildNode(key[0]);
   bool reach_end = (key.size() == idx + 1), node_exists = (node != nullptr);
   bool has_val = node_exists && (*node)->IsEndNode();
-  LOG_DEBUG("idx %u, keychar %c, reach_end %d, node_exists %d, has_val %d.", idx, key[idx], reach_end, node_exists, has_val);
-
-  if (reach_end) {
-    if (node_exists) {
-      LOG_DEBUG("Curr node val %c", (*node)->GetKeyChar());
-      if (has_val) {
-        LOG_DEBUG("has val, delete node %c", key[idx]);
-        auto tmp = std::make_unique<TrieNode>(std::move(**node));
-        (*prev)->RemoveChildNode(key[idx]);
-        if (tmp->HasChildren()) {
-          LOG_DEBUG("replace curr with no val node");
-          // Downgrade to TrieNode.
-          (*prev)->InsertChildNode(
-            key[idx], std::move(tmp));
-        }
-        return true;
-      } else {
-        return false;
-      }
-    } else {
-      return false;
-    }
-  }
+  LOG_DEBUG("idx %u, keychar %c, reach_end %d, node_exists %d, has_val %d.",
+            idx, key[idx], reach_end, node_exists, has_val);
 
   if (!node_exists) {
-    LOG_DEBUG("node does not exists, delete failed");
+    LOG_DEBUG("Node does not exists, delete failed.");
     return false;
   }
+
+  if (reach_end) {
+    LOG_DEBUG("Curr node val %c", (*node)->GetKeyChar());
+    if (!has_val) return false;
+
+    LOG_DEBUG("The given key exists, delete node %c", key[idx]);
+    std::unique_ptr<TrieNode> tmp = std::move(*node);
+    (*prev)->RemoveChildNode(key[idx]);
+    if (tmp->HasChildren()) {
+      LOG_DEBUG("Node has other children, replace deleted node with no value version.");
+      (*prev)->InsertChildNode(key[idx], std::move(tmp));
+    }
+    return true;
+  }
+
   bool res = RemoveHelper(key, idx + 1, node);
   if (!((*node)->HasChildren()) && !((*node)->IsEndNode())) {
-    LOG_DEBUG("Delete chained node %c", (*node)->GetKeyChar());
+    LOG_DEBUG("Delete chained parent node %c", (*node)->GetKeyChar());
     (*prev)->RemoveChildNode(key[idx]);
   }
   return res;

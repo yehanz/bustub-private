@@ -243,42 +243,39 @@ class Trie {
    * @return false Value is not inserted.
    */
   template<typename T>
-  bool InsertHelper(
-      const std::string &key, uint idx, T value,
-      std::unique_ptr<TrieNode> *prev) {
+  bool InsertHelper(const std::string &key, uint idx, T value,
+                    std::unique_ptr<TrieNode> *prev) {
     std::unique_ptr<TrieNode> *node = (*prev)->GetChildNode(key[idx]);
     bool reach_end = (key.size() == idx + 1), node_exists = (node != nullptr);
     bool has_val = node_exists && (*node)->IsEndNode();
-
     LOG_DEBUG("keychar %c, reach_end %d, node_exists %d, has_val %d.",
               key[idx], reach_end, node_exists, has_val);
+
+    // Root case.
     if (reach_end) {
       if (node_exists) {
-        LOG_DEBUG("Curr node val %c", (*node)->GetKeyChar());
         if (has_val) {
-          LOG_DEBUG("has val, insert false");
+          LOG_DEBUG("Already contains the key, insert false");
           return false;
         } else {
           // Upgrade node to node with val.
           (*prev)->RemoveChildNode(key[idx]);
           TrieNode n = std::move(**node);
-          std::unique_ptr<TrieNodeWithValue<T>> ptr = std::make_unique<TrieNodeWithValue<T>>(
-            std::move(n), value);
-          (*prev)->InsertChildNode(
-            key[idx], std::move(ptr));
-          LOG_DEBUG("Upgrad node with val, Curr node val %c", (*node)->GetKeyChar());
+          std::unique_ptr<TrieNodeWithValue<T>> ptr = 
+            std::make_unique<TrieNodeWithValue<T>>(std::move(n), value);
+          (*prev)->InsertChildNode(key[idx], std::move(ptr));
+          LOG_DEBUG("Upgrade node with val, Curr node val %c", (*node)->GetKeyChar());
           return true;
         }
       } else {
-        auto ptr = std::make_unique<TrieNodeWithValue<T>>(
-            key[idx], value);
-        auto res = (*prev)->InsertChildNode(
-          key[idx], std::move(ptr));
-        LOG_DEBUG("Create node with val, Curr node val %c", (*res)->GetKeyChar());
+        (*prev)->InsertChildNode(
+          key[idx], std::make_unique<TrieNodeWithValue<T>>(key[idx], value));
+        LOG_DEBUG("Create node with val");
         return true;
       }
     }
 
+    // Non-root case.
     if (!node_exists) {
       node = (*prev)->InsertChildNode(key[idx], std::make_unique<TrieNode>(key[idx]));
       LOG_DEBUG("Create node with val, Curr node val %c", (*node)->GetKeyChar());
@@ -312,28 +309,20 @@ class Trie {
   T GetValueHelper(
       const std::string &key, uint idx, std::unique_ptr<TrieNode> *prev, bool *success) {
     std::unique_ptr<TrieNode> *node = (*prev)->GetChildNode(key[idx]);
-    bool reach_end = (key.size() - 1 == idx), node_exists = (node != nullptr);
+    bool reach_end = (key.size() == idx + 1), node_exists = (node != nullptr);
     bool has_val = node_exists && (*node)->IsEndNode();
-
-    if (reach_end) {
-      if (node_exists) {
-        if (has_val) {
-          *success = true;
-          return dynamic_cast<TrieNodeWithValue<T>*>((*node).get())->GetValue();
-        } else {
-          *success = false;
-
-          return {};
-        }
-      } else {
-        return {};
-      }
-    }
 
     if (!node_exists) {
       *success = false;
       return {};
     }
+
+    if (reach_end) {
+      *success = has_val;
+      if (has_val) return dynamic_cast<TrieNodeWithValue<T>*>((*node).get())->GetValue();
+      else return {};
+    }
+
     return GetValueHelper<T>(key, idx + 1, node, success);
   }
 
@@ -371,7 +360,7 @@ class Trie {
   template <typename T>
   bool Insert(const std::string &key, T value) {
     if (key.empty())  return false;
-    LOG_DEBUG("\n\nInsert %s~~~~", key.c_str());
+    LOG_DEBUG("\nInsert %s", key.c_str());
     auto res = InsertHelper(key, 0, value, &root_);
     LOG_DEBUG("\nInsert done\n");
     return res;
@@ -415,8 +404,10 @@ class Trie {
    */
   template <typename T>
   T GetValue(const std::string &key, bool *success) {
-    *success = false;
-    if (key.empty())  return {};
+    if (key.empty()) {
+      *success = false;
+      return {};
+    }
     return GetValueHelper<T>(key, 0, &root_, success);
   }
 };
