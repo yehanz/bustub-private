@@ -48,4 +48,31 @@ class ReaderWriterLatch {
   std::shared_mutex mutex_;
 };
 
+class AutoReaderLatch {
+ public:
+  AutoReaderLatch(ReaderWriterLatch* latch): latch_(latch) {
+      latch_->RLock();
+  }
+
+  ~AutoReaderLatch() {
+      latch_->RUnlock();
+  }
+ private:
+  ReaderWriterLatch* latch_;
+};
+
+class AutoWriterLatch {
+ public:
+  AutoWriterLatch(ReaderWriterLatch* latch): latch_(latch) {
+      latch_->WLock();
+  }
+
+  ~AutoWriterLatch() {
+      latch_->WUnlock();
+  }
+ private:
+  ReaderWriterLatch* latch_;
+};
+
+
 }  // namespace bustub

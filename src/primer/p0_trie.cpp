@@ -142,10 +142,9 @@ Trie::Trie(): root_(std::make_unique<TrieNode>('\0')) {}
  */
 bool Trie::Remove(const std::string &key) {
   if (key.empty())  return false;
-  LOG_DEBUG("Remove key %s", key.c_str());
-  auto res = RemoveHelper(key, 0, &root_);
-  LOG_DEBUG("Remove done");
-  return res;
+  LOG_DEBUG("\nRemove key %s", key.c_str());
+  AutoWriterLatch l(&latch_);
+  return RemoveHelper(key, 0, &root_);
 }
 
 bool Trie::RemoveHelper(

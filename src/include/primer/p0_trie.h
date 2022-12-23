@@ -23,6 +23,43 @@
 #include "common/rwlatch.h"
 #include "common/logger.h"
 
+/**
+ * @brief Full state machine of trie tree insert
+ * We will be doing deep first search with parameter
+ * (curr_node, curr_key_char), with initial state being:
+ *  idx = 0
+ *  curr_key_char = key[idx]
+ *  curr_node = root.children_[curr_key_char]
+ * 
+ * There are 3 key states while deep first search and insert into the trie
+ * tree:
+ * 1. Node state (NS) - Node Exists (true), Otherwise (false).
+ *    curr_node != nullptr
+ * 2. Reach end (RE) - If we have traversed to the last char of the given key.
+ *    idx +1 == key.size()
+ * 3. Has value (HV) - If the current node has value.
+ *    curr_node.IsEndNode()
+ * 
+ * Please note there is some redundency among those states. For example, if NS
+ * is false, then HV must be false.
+ * 
+ * All possible states with their corresponding next move are shown as below,
+ * with terminal states marked with '*':
+ * NS   RE    HV    Next_move
+ * t    t     t     * Insert failed
+ * t    t     f     * Insert succeed, replace TrieNode with TrieNodeWithValue
+ * t    f     t     idx++, curr_key_char = key[idx],
+ *                  curr_node = curr_node.children_[curr_key_char]
+ * t    f     f     Same as above
+ * f    t     t     N/A
+ * f    t     f     * Create TrieNodeWithValue, append to its parent
+ * f    f     t     N/A
+ * f    f     f     Create TrieNode, append to its parent,
+ *                  then do the same as (t, f, t)
+ * 
+ * For full test coverage, should make sure all these 8 states are covered.
+ * Similar case for RemoveKey and GetKeyValue.
+ */
 namespace bustub {
 
 /**
@@ -97,8 +134,6 @@ class TrieNode {
   char GetKeyChar() const;
 
   /**
-   * TODO(P0): Add implementation
-   *
    * @brief Insert a child node for this trie node into children_ map, given the key char and
    * unique_ptr of the child node. If specified key_char already exists in children_,
    * return nullptr. If parameter `child`'s key char is different than parameter
@@ -118,8 +153,6 @@ class TrieNode {
   std::unique_ptr<TrieNode> *InsertChildNode(char key_char, std::unique_ptr<TrieNode> &&child);
 
   /**
-   * TODO(P0): Add implementation
-   *
    * @brief Get the child node given its key char. If child node for given key char does
    * not exist, return nullptr.
    *
@@ -130,8 +163,6 @@ class TrieNode {
   std::unique_ptr<TrieNode> *GetChildNode(char key_char);
 
   /**
-   * TODO(P0): Add implementation
-   *
    * @brief Remove child node from children_ map.
    * If key_char does not exist in children_, return immediately.
    *
@@ -140,8 +171,6 @@ class TrieNode {
   void RemoveChildNode(char key_char);
 
   /**
-   * TODO(P0): Add implementation
-   *
    * @brief Set the is_end_ flag to true or false.
    *
    * @param is_end Whether this trie node is ending char of a key string
@@ -310,7 +339,6 @@ class Trie {
       const std::string &key, uint idx, std::unique_ptr<TrieNode> *prev, bool *success) {
     std::unique_ptr<TrieNode> *node = (*prev)->GetChildNode(key[idx]);
     bool reach_end = (key.size() == idx + 1), node_exists = (node != nullptr);
-    bool has_val = node_exists && (*node)->IsEndNode();
 
     if (!node_exists) {
       *success = false;
@@ -318,8 +346,8 @@ class Trie {
     }
 
     if (reach_end) {
-      *success = has_val;
-      if (has_val) return dynamic_cast<TrieNodeWithValue<T>*>((*node).get())->GetValue();
+      *success = (*node)->IsEndNode();
+      if (*success) return dynamic_cast<TrieNodeWithValue<T>*>((*node).get())->GetValue();
       else return {};
     }
 
@@ -361,14 +389,11 @@ class Trie {
   bool Insert(const std::string &key, T value) {
     if (key.empty())  return false;
     LOG_DEBUG("\nInsert %s", key.c_str());
-    auto res = InsertHelper(key, 0, value, &root_);
-    LOG_DEBUG("\nInsert done\n");
-    return res;
+    AutoWriterLatch l(&latch_);
+    return InsertHelper(key, 0, value, &root_);
   }
 
   /**
-   * TODO(P0): Add implementation
-   *
    * @brief Remove key value pair from the trie.
    * This function should also remove nodes that are no longer part of another
    * key. If key is empty or not found, return false.
@@ -408,6 +433,7 @@ class Trie {
       *success = false;
       return {};
     }
+    AutoReaderLatch l (&latch_);
     return GetValueHelper<T>(key, 0, &root_, success);
   }
 };
