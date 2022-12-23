@@ -214,8 +214,8 @@ class TrieNodeWithValue : public TrieNode {
    * @param trieNode TrieNode whose data is to be moved to TrieNodeWithValue
    * @param value
    */
-  TrieNodeWithValue(TrieNode &&trieNode, T value):
-      TrieNode(std::move(trieNode)), value_(value) {
+  TrieNodeWithValue(TrieNode &&trieNode, T &&value):
+      TrieNode(std::move(trieNode)), value_(std::forward<T>(value)) {
     SetEndNode(true);
   }
 
@@ -230,9 +230,8 @@ class TrieNodeWithValue : public TrieNode {
    * @param key_char Key char of this node
    * @param value Value of this node
    */
-  TrieNodeWithValue(
-    char key_char, T value):
-      TrieNode(key_char), value_(std::move(value)) {
+  TrieNodeWithValue(char key_char, T &&value):
+      TrieNode(key_char), value_(std::forward<T>(value)) {
     SetEndNode(true);
   }
 
@@ -272,7 +271,7 @@ class Trie {
    * @return false Value is not inserted.
    */
   template<typename T>
-  bool InsertHelper(const std::string &key, uint idx, T value,
+  bool InsertHelper(const std::string &key, uint idx, T &&value,
                     std::unique_ptr<TrieNode> *prev) {
     std::unique_ptr<TrieNode> *node = (*prev)->GetChildNode(key[idx]);
     bool reach_end = (key.size() == idx + 1), node_exists = (node != nullptr);
@@ -291,14 +290,14 @@ class Trie {
           (*prev)->RemoveChildNode(key[idx]);
           TrieNode n = std::move(**node);
           std::unique_ptr<TrieNodeWithValue<T>> ptr = 
-            std::make_unique<TrieNodeWithValue<T>>(std::move(n), value);
-          (*prev)->InsertChildNode(key[idx], std::move(ptr));
+            std::make_unique<TrieNodeWithValue<T>>(std::move(n), std::forward<T>(value));
+          node = (*prev)->InsertChildNode(key[idx], std::move(ptr));
           LOG_DEBUG("Upgrade node with val, Curr node val %c", (*node)->GetKeyChar());
           return true;
         }
       } else {
-        (*prev)->InsertChildNode(
-          key[idx], std::make_unique<TrieNodeWithValue<T>>(key[idx], value));
+        node = (*prev)->InsertChildNode(
+          key[idx], std::make_unique<TrieNodeWithValue<T>>(key[idx], std::forward<T>(value)));
         LOG_DEBUG("Create node with val");
         return true;
       }
@@ -309,7 +308,7 @@ class Trie {
       node = (*prev)->InsertChildNode(key[idx], std::make_unique<TrieNode>(key[idx]));
       LOG_DEBUG("Create node with val, Curr node val %c", (*node)->GetKeyChar());
     }
-    return InsertHelper<T>(key, idx + 1, value, node);
+    return InsertHelper<T>(key, idx + 1, std::forward<T>(value), node);
   }
 
   /**
@@ -386,11 +385,11 @@ class Trie {
    * @return True if insertion succeeds, false if the key already exists
    */
   template <typename T>
-  bool Insert(const std::string &key, T value) {
+  bool Insert(const std::string &key, T &&value) {
     if (key.empty())  return false;
     LOG_DEBUG("\nInsert %s", key.c_str());
     AutoWriterLatch l(&latch_);
-    return InsertHelper(key, 0, value, &root_);
+    return InsertHelper(key, 0, std::forward<T>(value), &root_);
   }
 
   /**

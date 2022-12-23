@@ -169,7 +169,7 @@ bool Trie::RemoveHelper(
     (*prev)->RemoveChildNode(key[idx]);
     if (tmp->HasChildren()) {
       LOG_DEBUG("Node has other children, replace deleted node with no value version.");
-      (*prev)->InsertChildNode(key[idx], std::move(tmp));
+      node = (*prev)->InsertChildNode(key[idx], std::move(tmp));
     }
     return true;
   }
